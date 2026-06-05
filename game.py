@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import sys
-import time
-
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agent import MoveResponse
@@ -109,16 +106,6 @@ def human_player(game_state: GameState, identity: int) -> int:
             raise
 
 
-def _simulate_stream(text: str, delay: float = 0.012) -> None:
-    for char in text:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    if text and not text.endswith("\n"):
-        sys.stdout.write("\n")
-        sys.stdout.flush()
-
-
 def agent_player_fn(structured_model, system_prompt: str, game_state: GameState, identity: int) -> int:
     symbol = "X" if identity == 1 else "O"
     prompt = (
@@ -138,7 +125,7 @@ def agent_player_fn(structured_model, system_prompt: str, game_state: GameState,
         raise ValueError(f"Unexpected response type: {type(response)}")
 
     if response.reasoning.strip():
-        _simulate_stream(response.reasoning.strip())
+        print(response.reasoning.strip())
         print("─────────────────")
 
     position = response.position

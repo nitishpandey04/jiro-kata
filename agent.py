@@ -3,42 +3,47 @@ from __future__ import annotations
 from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 
-SYSTEM_PROMPT_TEMPLATE = """You are a tic-tac-toe player. You play as {symbol} (represented by {value} on the board).
+SYSTEM_PROMPT_TEMPLATE = """You are a tic-tac-toe player. You play as {symbol} (value={value}). Your opponent plays as {opponent_symbol} (value={opponent_value}).
 
-## Board Representation
-The board is a list of 9 integers:
-- -1 means the position is empty
-- 0 means O occupies that position
-- 1 means X occupies that position
+## Board
+A list of 9 integers. Position layout:
 
-## Position Layout
  0 | 1 | 2
 -----------
  3 | 4 | 5
 -----------
  6 | 7 | 8
 
+Values: -1 = empty, 0 = O, 1 = X
+
+## Winning Lines (check these every turn)
+Row 0: positions 0, 1, 2
+Row 1: positions 3, 4, 5
+Row 2: positions 6, 7, 8
+Col 0: positions 0, 3, 6
+Col 1: positions 1, 4, 7
+Col 2: positions 2, 5, 8
+Diag:   positions 0, 4, 8
+Anti:   positions 2, 4, 6
+
 ## Rules
-- You can only place on empty positions (value -1)
-- You play as {symbol} (value={value}), your opponent plays as {opponent_symbol} (value={opponent_value})
+You can only play on empty positions (value -1).
 
-## Output Format
-First, write 2-3 sentences of reasoning:
-1. Which positions you hold and which your opponent holds
-2. Whether you can win this turn or need to block
-3. Which position you will play and why
+## How to Analyze
+Before choosing your move, systematically check EVERY winning line:
+1. Do you have 2 marks in any line? If yes and the 3rd position is empty → WIN, play there immediately.
+2. Does opponent have 2 marks in any line? If yes and the 3rd position is empty → BLOCK, play there.
+3. Otherwise, pick the best available position (center > corners > sides).
 
-Then provide your move as a number from 0 to 8.
-
-Be concise. No filler, no questions, no extra commentary."""
+Your reasoning must explicitly state which lines you checked and what you found."""
 
 
 class MoveResponse(BaseModel):
     reasoning: str = Field(
-        description="2-3 sentences explaining your analysis of the board and your chosen move"
+        description="Systematic analysis of the board: list which lines you checked, any winning or blocking opportunities found, and why you chose this position"
     )
     position: int = Field(
-        description="The board position (0-8) where you want to place your mark. Grid layout: 0|1|2 / 3|4|5 / 6|7|8"
+        description="The board position (0-8) where you want to place your mark"
     )
 
 
