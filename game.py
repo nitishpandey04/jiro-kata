@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import re
 import sys
 import time
 
 from langchain_core.messages import HumanMessage, SystemMessage
+
+from agent import MoveResponse
 
 WINNING_LINES = [
     (0, 1, 2),
@@ -108,7 +109,7 @@ def human_player(game_state: GameState, identity: int) -> int:
             raise
 
 
-def _simulate_stream(text: str, delay: float = 0.01) -> None:
+def _simulate_stream(text: str, delay: float = 0.012) -> None:
     for char in text:
         sys.stdout.write(char)
         sys.stdout.flush()
@@ -118,31 +119,7 @@ def _simulate_stream(text: str, delay: float = 0.01) -> None:
         sys.stdout.flush()
 
 
-def _clean_reasoning(text: str) -> str:
-    text = re.sub(r'functions?\.make_move\s*\(\s*\{[^}]*\}\s*\)', '', text)
-    text = re.sub(r'make_move\s*\(\s*\{[^}]*\}\s*\)', '', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    return text.strip()
-
-
-def _extract_position_from_text(text: str) -> int | None:
-    patterns = [
-        r'position["\s]*[:=]\s*(\d)',
-        r'position\s*=\s*(\d)',
-        r'at\s+position\s+(\d)',
-        r'play\s+(?:position\s+)?(\d)',
-        r'place\s+(?:at\s+)?(?:position\s+)?(\d)',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            pos = int(match.group(1))
-            if 0 <= pos <= 8:
-                return pos
-    return None
-
-
-def agent_player_fn(llm_with_tools, system_prompt: str, game_state: GameState, identity: int) -> int:
+def agent_player_fn(structured_model, system_prompt: str, game_state: GameState, identity: int) -> int:
     symbol = "X" if identity == 1 else "O"
     prompt = (
         f"Current board state: {game_state.board}\n"
@@ -155,37 +132,18 @@ def agent_player_fn(llm_with_tools, system_prompt: str, game_state: GameState, i
         HumanMessage(content=prompt),
     ]
 
-    response = llm_with_tools.invoke(messages)
+    response = structured_model.invoke(messages)
 
-    reasoning = response.content if isinstance(response.content, str) else ""
-    if isinstance(response.content, list):
-        parts = []
-        for block in response.content:
-            if isinstance(block, dict) and block.get("type") == "text":
-                parts.append(block.get("text", ""))
-            elif isinstance(block, str):
-                parts.append(block)
-        reasoning = "".join(parts)
+    if not isinstance(response, MoveResponse):
+        raise ValueError(f"Unexpected response type: {type(response)}")
 
-    clean = _clean_reasoning(reasoning)
-    if clean:
-        _simulate_stream(clean)
+    if response.reasoning.strip():
+        _simulate_stream(response.reasoning.strip())
         print("─────────────────")
 
-    position = None
-
-    if response.tool_calls:
-        position = response.tool_calls[0]["args"]["position"]
-        if not isinstance(position, int):
-            position = int(position)
-
-    if position is None:
-        position = _extract_position_from_text(reasoning)
-
-    if position is None:
-        raise ValueError(
-            f"Agent did not make a valid move. Response: {reasoning}"
-        )
+    position = response.position
+    if not isinstance(position, int):
+        position = int(position)
 
     return position
 

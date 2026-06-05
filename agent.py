@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from langchain.chat_models import init_chat_model
-from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
 SYSTEM_PROMPT_TEMPLATE = """You are a tic-tac-toe player. You play as {symbol} (represented by {value} on the board).
@@ -20,30 +19,27 @@ The board is a list of 9 integers:
  6 | 7 | 8
 
 ## Rules
-- You MUST use the make_move tool to place your mark
 - You can only place on empty positions (value -1)
 - You play as {symbol} (value={value}), your opponent plays as {opponent_symbol} (value={opponent_value})
-- Call make_move EXACTLY ONCE per turn
 
 ## Output Format
-Before calling make_move, you MUST first state your reasoning in 2-3 sentences:
+First, write 2-3 sentences of reasoning:
 1. Which positions you hold and which your opponent holds
 2. Whether you can win this turn or need to block
 3. Which position you will play and why
 
-Then call make_move once. Do not say anything else after the tool call."""
+Then provide your move as a number from 0 to 8.
+
+Be concise. No filler, no questions, no extra commentary."""
 
 
-class MakeMoveInput(BaseModel):
-    position: int = Field(
-        description="A number from 0 to 8 representing the board position (0-8 grid: 0|1|2/3|4|5/6|7|8)"
+class MoveResponse(BaseModel):
+    reasoning: str = Field(
+        description="2-3 sentences explaining your analysis of the board and your chosen move"
     )
-
-
-@tool(args_schema=MakeMoveInput)
-def make_move(position: int) -> str:
-    """Place your mark on the tic-tac-toe board."""
-    return ""
+    position: int = Field(
+        description="The board position (0-8) where you want to place your mark. Grid layout: 0|1|2 / 3|4|5 / 6|7|8"
+    )
 
 
 def create_jiro_kata_agent(
@@ -58,9 +54,9 @@ def create_jiro_kata_agent(
         model: Model string, e.g. "openai:gpt-4.1-mini"
 
     Returns:
-        Tuple of (llm_with_tools, system_prompt). Invoke llm_with_tools with
-        system_prompt + user message, then extract the move from
-        response.tool_calls[0]["args"]["position"].
+        Tuple of (structured_model, system_prompt). The model has with_structured_output(MoveResponse)
+        applied. Call structured_model.invoke() with system_prompt + user message, then read
+        response.reasoning and response.position.
     """
     if identity not in (0, 1):
         raise ValueError(f"Identity must be 0 (O) or 1 (X), got {identity}")
@@ -79,6 +75,6 @@ def create_jiro_kata_agent(
 
     provider, model_name = model.split(":", 1) if ":" in model else ("openai", model)
     llm = init_chat_model(model_name, model_provider=provider)
-    llm_with_tools = llm.bind_tools([make_move])
+    structured_model = llm.with_structured_output(MoveResponse)
 
-    return llm_with_tools, system_prompt
+    return structured_model, system_prompt
