@@ -52,7 +52,7 @@ Two gpt-4.1-mini agents will draw every time. It's a solved game. But throw a we
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--mode` | `agent-vs-human` | `agent-vs-agent` or `agent-vs-human` |
+| `--mode` | `agent-vs-agent` | `agent-vs-agent` or `agent-vs-human` |
 | `--x-model` | `openai:gpt-4.1-mini` | Model for player X |
 | `--o-model` | `openai:gpt-4.1-mini` | Model for player O |
 | `--human-plays` | `O` | Which side you play in human mode (`X` or `O`) |
