@@ -29,8 +29,8 @@ def main():
     parser.add_argument(
         "--mode",
         choices=["agent-vs-human", "agent-vs-agent"],
-        default="agent-vs-human",
-        help="Game mode (default: agent-vs-human)",
+        default="agent-vs-agent",
+        help="Game mode (default: agent-vs-agent)",
     )
     parser.add_argument(
         "--x-model",
